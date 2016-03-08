@@ -1,0 +1,209 @@
+st.tld
+--------
+<?xml version="1.0" encoding="UTF-8"?>
+
+<taglib version="2.0" xmlns="http://java.sun.com/xml/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee/web-jsptaglibrary_2_0.xsd">
+  <tlib-version>2.0</tlib-version>
+  <jsp-version>2.0</jsp-version>
+  <short-name>st</short-name>
+  <uri>http://www.razzcodes.com/dbtags</uri>
+  <description>
+    Tags related to database  
+  </description>
+  <tag>
+  	<name>Managers</name>
+  	<tag-class>handler.MgrHandler</tag-class>
+  	<body-content>empty</body-content>
+  </tag>
+  <tag>
+  	<name>SortedManagers</name>
+  	<tag-class>handler.SortMgrHandler</tag-class>
+  	<body-content>empty</body-content>
+  	<attribute>
+  		<name>sortBy</name>
+  		<required>true</required>
+  		<trexprvalue>true</trexprvalue>
+  	</attribute>
+  </tag>
+  <tag>
+  	<name>PrintManagers</name>
+  	<tag-class>handler.PrintableMgrHandler</tag-class>
+  	<body-content>scriptless</body-content>
+  </tag>
+  </taglib>
+  
+  MgrHandler.java
+  -----------------
+  package handler;
+
+import java.io.IOException;
+
+import javax.servlet.jsp.JspException;
+import javax.servlet.jsp.JspWriter;
+import javax.servlet.jsp.tagext.SimpleTagSupport;
+
+import oracle.jdbc.rowset.OracleCachedRowSet;
+
+public class MgrHandler extends SimpleTagSupport {
+
+	@Override
+	public void doTag() throws JspException, IOException {
+		JspWriter out = getJspContext().getOut();
+		out.println("<h3>List of Managers and Manager Ids</h3>");
+		
+		try
+		{
+			OracleCachedRowSet ors = new OracleCachedRowSet();
+			ors.setUrl("jdbc:oracle:thin:@localhost:1521:XE");
+			ors.setUsername("hr");
+			ors.setPassword("hr");
+			ors.setCommand("select distinct e1.employee_id,e1.first_name,e1.last_name,e1.department_id from employees e1,employees e2 where e1.employee_id = e2.manager_id");
+			ors.execute();
+			out.println("<table border='1'><tr><th>Employee ID</th><th>First Name</th><th>Last Name</th><th>Dept. ID</th></tr>");
+			while(ors.next())
+			{
+				out.println("<tr><td>" + ors.getString(1) + "</td><td>" + ors.getString(2) + "</td><td>" + ors.getString(3) + "</td><td>" + ors.getString(4) + "</td></tr>");
+			}
+			out.println("</table>");
+			ors.close();
+		}
+		catch(Exception e)
+		{
+			out.println(e.getMessage());
+		}
+	}
+	
+}
+
+
+SortMgrHandler.java
+--------------------
+package handler;
+
+import java.io.IOException;
+
+import javax.servlet.jsp.JspException;
+import javax.servlet.jsp.JspWriter;
+import javax.servlet.jsp.tagext.SimpleTagSupport;
+
+import oracle.jdbc.rowset.OracleCachedRowSet;
+
+public class SortMgrHandler extends SimpleTagSupport {
+	private String sortBy;
+	public void setSortBy(String sortBy)
+	{
+		this.sortBy = sortBy;
+	}
+	@Override
+	public void doTag() throws JspException, IOException {
+		
+		JspWriter out = getJspContext().getOut();
+		out.println("<h3>List of Managers and Manager Ids in Sorted Order based on Attribute</h3>");
+		
+		try
+		{
+			OracleCachedRowSet ors = new OracleCachedRowSet();
+			ors.setUrl("jdbc:oracle:thin:@localhost:1521:XE");
+			ors.setUsername("hr");
+			ors.setPassword("hr");
+			ors.setCommand("select distinct e1.employee_id,e1.first_name,e1.last_name,e1.department_id from employees e1,employees e2 where e1.employee_id = e2.manager_id order by e1." + sortBy);
+			ors.execute();
+			out.println("<table border='1'><tr><th>Employee ID</th><th>First Name</th><th>Last Name</th><th>Dept. ID</th></tr>");
+			while(ors.next())
+			{
+				out.println("<tr><td>" + ors.getString(1) + "</td><td>" + ors.getString(2) + "</td><td>" + ors.getString(3) + "</td><td>" + ors.getString(4) + "</td></tr>");
+			}
+			out.println("</table>");
+			ors.close();
+		}
+		catch(Exception e)
+		{
+			out.println(e.getMessage());
+		}
+	}
+	
+}
+
+
+PrintableMgrHandler.java
+-------------------------
+package handler;
+
+import java.io.IOException;
+
+import javax.servlet.jsp.JspException;
+import javax.servlet.jsp.JspWriter;
+import javax.servlet.jsp.PageContext;
+import javax.servlet.jsp.tagext.JspFragment;
+import javax.servlet.jsp.tagext.SimpleTagSupport;
+
+import oracle.jdbc.rowset.OracleCachedRowSet;
+
+public class PrintableMgrHandler extends SimpleTagSupport {
+
+	@Override
+	public void doTag() throws JspException, IOException {
+		JspWriter out = getJspContext().getOut();
+		PageContext ctxt = (PageContext)getJspContext();
+		JspFragment body = getJspBody();
+		
+		out.println("<h3>List of Managers and Manager Ids in a Printable Format</h3>");
+		
+		try
+		{
+			OracleCachedRowSet ors = new OracleCachedRowSet();
+			ors.setUrl("jdbc:oracle:thin:@localhost:1521:XE");
+			ors.setUsername("hr");
+			ors.setPassword("hr");
+			ors.setCommand("select distinct e1.employee_id,e1.first_name,e1.last_name,e1.department_id from employees e1,employees e2 where e1.employee_id = e2.manager_id");
+			ors.execute();
+			
+			while(ors.next())
+			{
+				ctxt.setAttribute("empid", ors.getString(1));
+				ctxt.setAttribute("fname", ors.getString(2));
+				ctxt.setAttribute("lname", ors.getString(3));
+				ctxt.setAttribute("deptid", ors.getString(4));
+				body.invoke(out);
+			}
+			
+			ors.close();
+		}
+		catch(Exception e)
+		{
+			out.println(e.getMessage());
+		}
+	}
+	
+}
+
+
+useTag.jsp
+------------
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+    <%@taglib uri="http://www.razzcodes.com/dbtags" prefix="st"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<st:Managers/> //To access MgrHandler which is a simple handler without body and attribute
+<p/>
+<st:SortedManagers sortBy="employee_id"/>   // To access SortMgrHandler which is a handler with attribute (sortBy id is an attribute)
+<p/>
+<st:PrintManagers>      //To access PrintableMgrHandler, which is a handler with body
+${empid}, ${fname }, ${lname },${deptid }<br/>
+</st:PrintManagers>
+
+<st:PrintManagers>
+<h4>${fname } ${lname }</h4>
+<ul>
+	<li>Employee Id: ${empid}</li>
+	<li>Dept Id:${deptid }</li>
+</ul>
+</st:PrintManagers>
+</body>
+</html>
